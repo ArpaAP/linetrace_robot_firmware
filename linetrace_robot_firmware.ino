@@ -5,11 +5,13 @@
 #define ECHO 13
 #define IR_TRACE_LEFT 4
 #define IR_TRACE_RIGHT 5
+#define STATUS_LED 7
 
 double duration, distance;
 
 SoftwareSerial BTSerial(TX_PIN, RX_PIN);
 int auto_enabled = 0;
+int is_stopped = 0;
 
 String splitString(String string, char separator, int index)
 {
@@ -35,6 +37,8 @@ void setup() {
   pinMode(9, OUTPUT);
   pinMode(10, OUTPUT);
   pinMode(11, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(STATUS_LED, OUTPUT);
   pinMode(TRIG, OUTPUT);
   pinMode(ECHO, INPUT);
   pinMode(IR_TRACE_LEFT, INPUT);
@@ -46,35 +50,62 @@ void loop() {
     int ir_left = digitalRead(IR_TRACE_LEFT);
     int ir_right = digitalRead(IR_TRACE_RIGHT);
 
-    Serial.print("asdf: ");
+    Serial.print("IR: ");
     Serial.print(ir_left);
     Serial.println(ir_right);
 
-    if (ir_left == 0 && ir_right == 0) {
-      digitalWrite(8, HIGH);
-      digitalWrite(9, LOW);
-      digitalWrite(10, HIGH);
-      digitalWrite(11, LOW);
-      delay(30);
-      digitalWrite(10, LOW);
-      digitalWrite(11, LOW);
-      delay(5);
-      digitalWrite(8, LOW);
-      digitalWrite(9, LOW);
+    digitalWrite(TRIG, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TRIG, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG, LOW);
+  
+    duration = pulseIn (ECHO, HIGH);
+    distance = duration * 17 / 1000; 
+  
+    Serial.print("Distance : ");
+    Serial.print(distance);
+    Serial.println("cm");
+
+    if (distance > 10) {
+      is_stopped = 0;
+      digitalWrite(STATUS_LED, LOW);
+      if (ir_left == 0 && ir_right == 0) {
+        digitalWrite(8, HIGH);
+        digitalWrite(9, LOW);
+        digitalWrite(10, HIGH);
+        digitalWrite(11, LOW);
+        delay(30);
+        digitalWrite(10, LOW);
+        digitalWrite(11, LOW);
+        delay(5);
+        digitalWrite(8, LOW);
+        digitalWrite(9, LOW);
+      }
+      else if (ir_left == 0) {
+        digitalWrite(8, HIGH);
+        digitalWrite(9, LOW);
+        delay(30);
+        digitalWrite(8, LOW);
+        digitalWrite(9, LOW);
+      }
+      else if (ir_right == 0) {
+        digitalWrite(10, HIGH);
+        digitalWrite(11, LOW);
+        delay(30);
+        digitalWrite(10, LOW);
+        digitalWrite(11, LOW);
+      }
     }
-    else if (ir_left == 0) {
-      digitalWrite(8, HIGH);
-      digitalWrite(9, LOW);
-      delay(30);
-      digitalWrite(8, LOW);
-      digitalWrite(9, LOW);
-    }
-    else if (ir_right == 0) {
-      digitalWrite(10, HIGH);
-      digitalWrite(11, LOW);
-      delay(30);
-      digitalWrite(10, LOW);
-      digitalWrite(11, LOW);
+    else {
+      if (is_stopped == 0) {
+        is_stopped = 1;
+        digitalWrite(STATUS_LED, HIGH);
+        tone(6, 659.25);
+        delay(200);
+        noTone(6);
+      }
+      Serial.println("Too close. stop running");
     }
   }
   
